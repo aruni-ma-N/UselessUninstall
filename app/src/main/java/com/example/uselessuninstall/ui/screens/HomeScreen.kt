@@ -28,9 +28,11 @@ import androidx.compose.ui.unit.sp
 import com.example.uselessuninstall.ui.theme.UselessUninstallTheme
 
 /**
- * Screen 1: Landing screen for the Random App Uninstaller.
+ * Screen 1: Landing screen for the Automated Application Analyzer.
  *
- * @param onFindRandomApp Callback triggered when user clicks the "Find a Random App" button.
+ * Designed with an intentionally serious, diagnostic, and slightly suspicious system aesthetic.
+ *
+ * @param onFindRandomApp Callback triggered when user clicks "Initiate System Analysis".
  * @param modifier Modifier applied to the screen container.
  */
 @Composable
@@ -52,11 +54,11 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Hero section
+            // Diagnostic Hero Section
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Playful App Icon / Badge
+                // System Diagnostic Badge
                 Box(
                     modifier = Modifier
                         .size(110.dp)
@@ -67,16 +69,16 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "🎲",
+                        text = "⚙️",
                         fontSize = 54.sp
                     )
                 }
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // Title
+                // Serious System Title
                 Text(
-                    text = "Random App Uninstaller",
+                    text = "Automated Application Analyzer",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -85,9 +87,9 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Description
+                // Suspicious corporate/diagnostic description
                 Text(
-                    text = "Too many apps cluttering your phone? Let fate decide! We'll pick a random app for you to consider uninstalling.",
+                    text = "Proprietary heuristic diagnostic engine. Scans installed packages, evaluates system resources, and determines optimal decommissioning candidates.\n\nEvaluation criteria are strictly confidential.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -114,13 +116,21 @@ fun HomeScreen(
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                 ) {
                     Text(
-                        text = "🎲 Find a Random App",
+                        text = "Initiate System Analysis",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = "Automated Diagnostic Engine v2.4",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
             }
         }
     }

@@ -1,13 +1,10 @@
 package com.example.uselessuninstall.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -28,13 +25,13 @@ import com.example.uselessuninstall.model.SampleApps
 import com.example.uselessuninstall.ui.theme.UselessUninstallTheme
 
 /**
- * Material 3 confirmation dialog asking the user to confirm uninstallation intent.
+ * Material 3 confirmation dialog with serious tone and 🤔 element.
  *
- * NOTE: Clicking "Yes, Uninstall" does NOT directly uninstall the app; it only triggers [onConfirmUninstall]
- * for the backend developer to connect.
+ * NOTE: Clicking "Authorize Decommission" does NOT directly uninstall the app; it only triggers [onConfirmUninstall]
+ * for the caller.
  *
  * @param app The [AppInfo] of the application to be uninstalled.
- * @param onConfirmUninstall Callback triggered when user clicks "Yes, Uninstall".
+ * @param onConfirmUninstall Callback triggered when user confirms decommissioning intent.
  * @param onCancel Callback triggered when user dismisses or clicks "Cancel".
  */
 @Composable
@@ -48,7 +45,7 @@ fun UninstallConfirmationDialog(
         shape = RoundedCornerShape(28.dp),
         title = {
             Text(
-                text = "Are you sure?",
+                text = "Security Verification 🤔",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -56,7 +53,7 @@ fun UninstallConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "You are about to uninstall ${app.name}.",
+                    text = "Candidate ${app.name} has been marked for uninstallation.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -87,6 +84,15 @@ fun UninstallConfirmationDialog(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = "Are you certain you wish to proceed to final verification? 🤔",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         },
         confirmButton = {
@@ -99,7 +105,7 @@ fun UninstallConfirmationDialog(
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Text(
-                    text = "Yes, Uninstall",
+                    text = "Authorize Decommission",
                     fontWeight = FontWeight.SemiBold
                 )
             }

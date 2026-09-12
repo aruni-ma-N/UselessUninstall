@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.uselessuninstall.model.AppInfo
 import com.example.uselessuninstall.model.SampleApps
+import com.example.uselessuninstall.ui.screens.AnalysisScreen
 import com.example.uselessuninstall.ui.screens.CountdownScreen
 import com.example.uselessuninstall.ui.screens.HomeScreen
 import com.example.uselessuninstall.ui.screens.RandomAppScreen
@@ -18,15 +19,13 @@ import com.example.uselessuninstall.ui.state.UninstallerUiState
 import com.example.uselessuninstall.ui.theme.UselessUninstallTheme
 
 /**
- * Top-level application coordinator for the Random App Uninstaller.
+ * Top-level application coordinator for the Automated Application Analyzer.
  *
- * Designed to be completely modular:
- * - Operates interactively in standalone mock mode using [SampleApps.sampleList].
- * - Allows another developer to supply real app selection and system uninstall hooks.
+ * Simulates a serious diagnostic system while secretly driving random decommissioning.
  *
  * @param modifier Modifier applied to the root container.
- * @param onSelectRandomApp Optional hook to supply a real randomly selected [AppInfo] from PackageManager.
- * @param onCountdownFinishedCallback Optional hook called when countdown finishes to trigger system uninstall.
+ * @param onSelectRandomApp Optional hook to supply a real [AppInfo] (will later connect to RandomAppSelector).
+ * @param onCountdownFinishedCallback Optional hook called upon final action authorization (will later connect to UninstallManager).
  */
 @Composable
 fun RandomUninstallerApp(
@@ -34,21 +33,34 @@ fun RandomUninstallerApp(
     onSelectRandomApp: (() -> AppInfo?)? = null,
     onCountdownFinishedCallback: ((AppInfo) -> Unit)? = null
 ) {
-    // Internal navigation state
     var uiState by remember {
         mutableStateOf<UninstallerUiState>(UninstallerUiState.Home)
     }
 
-    // Helper to pick a random app (using hook if provided, or SampleApps pool)
-    val pickRandomApp: () -> AppInfo = {
+    // =========================================================================
+    // PLACEHOLDER: App candidate selection
+    // Currently resolves via onSelectRandomApp hook or falls back to SampleApps mock pool.
+    // In future integration, this will be wired to real AppInfo from InstalledAppRetriever
+    // chosen by RandomAppSelector.
+    // =========================================================================
+    val pickCandidateApp: () -> AppInfo = {
         onSelectRandomApp?.invoke() ?: SampleApps.sampleList.random()
     }
 
     RandomUninstallerContent(
         uiState = uiState,
         modifier = modifier,
-        onFindRandomApp = {
-            uiState = UninstallerUiState.RandomApp(pickRandomApp())
+        onInitiateAnalysis = {
+            // Initiate the serious diagnostic analysis sequence
+            val candidate = pickCandidateApp()
+            uiState = UninstallerUiState.Analyzing(candidate)
+        },
+        onAnalysisComplete = { candidate ->
+            // Transition to Candidate Selected screen once diagnostic sequence completes
+            uiState = UninstallerUiState.RandomApp(candidate)
+        },
+        onCancelAnalysis = {
+            uiState = UninstallerUiState.Home
         },
         onUninstallClick = { app ->
             uiState = UninstallerUiState.Confirming(app)
@@ -57,24 +69,27 @@ fun RandomUninstallerApp(
             uiState = UninstallerUiState.Home
         },
         onConfirmUninstall = { app ->
-            uiState = UninstallerUiState.Countdown(app = app, secondsRemaining = 5)
+            // Proceed to theatrical preparation and countdown
+            uiState = UninstallerUiState.Countdown(app = app, secondsRemaining = 3)
         },
         onDismissConfirmation = { app ->
             uiState = UninstallerUiState.RandomApp(app)
         },
-        onCountdownFinished = { app ->
-            // Invoke optional backend callback for system uninstall
+        onExecuteFinalUninstall = { app ->
+            // =====================================================================
+            // PLACEHOLDER: Final Uninstall Action
+            // Invoked when user confirms the final action button after the countdown.
+            // In future integration, this will call UninstallManager.requestUninstall().
+            // =====================================================================
             onCountdownFinishedCallback?.invoke(app)
-
-            // Transition UI to result screen (simulated success in UI mock mode)
             uiState = UninstallerUiState.Result(app = app, isSuccess = true)
         },
         onCancelCountdown = { app ->
-            // Cancelling only stops the countdown and returns to the app screen
             uiState = UninstallerUiState.RandomApp(app)
         },
         onFindAnother = {
-            uiState = UninstallerUiState.RandomApp(pickRandomApp())
+            val candidate = pickCandidateApp()
+            uiState = UninstallerUiState.Analyzing(candidate)
         },
         onBackHome = {
             uiState = UninstallerUiState.Home
@@ -87,19 +102,19 @@ fun RandomUninstallerApp(
 
 /**
  * Pure, stateless screen dispatcher based on [UninstallerUiState].
- *
- * Allows another developer to drive the entire flow using a ViewModel if preferred.
  */
 @Composable
 fun RandomUninstallerContent(
     uiState: UninstallerUiState,
     modifier: Modifier = Modifier,
-    onFindRandomApp: () -> Unit,
+    onInitiateAnalysis: () -> Unit,
+    onAnalysisComplete: (AppInfo) -> Unit,
+    onCancelAnalysis: () -> Unit,
     onUninstallClick: (AppInfo) -> Unit,
     onKeepClick: (AppInfo) -> Unit,
     onConfirmUninstall: (AppInfo) -> Unit,
     onDismissConfirmation: (AppInfo) -> Unit,
-    onCountdownFinished: (AppInfo) -> Unit,
+    onExecuteFinalUninstall: (AppInfo) -> Unit,
     onCancelCountdown: (AppInfo) -> Unit,
     onFindAnother: () -> Unit,
     onBackHome: () -> Unit,
@@ -113,7 +128,14 @@ fun RandomUninstallerContent(
         when (state) {
             is UninstallerUiState.Home -> {
                 HomeScreen(
-                    onFindRandomApp = onFindRandomApp
+                    onFindRandomApp = onInitiateAnalysis
+                )
+            }
+
+            is UninstallerUiState.Analyzing -> {
+                AnalysisScreen(
+                    onAnalysisComplete = { onAnalysisComplete(state.app) },
+                    onCancel = onCancelAnalysis
                 )
             }
 
@@ -141,7 +163,7 @@ fun RandomUninstallerContent(
                 CountdownScreen(
                     app = state.app,
                     initialSeconds = state.secondsRemaining,
-                    onCountdownFinished = { onCountdownFinished(state.app) },
+                    onExecuteUninstall = { onExecuteFinalUninstall(state.app) },
                     onCancel = { onCancelCountdown(state.app) }
                 )
             }

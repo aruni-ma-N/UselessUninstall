@@ -3,35 +3,42 @@ package com.example.uselessuninstall.ui.state
 import com.example.uselessuninstall.model.AppInfo
 
 /**
- * Represents the distinct UI states of the Random App Uninstaller.
+ * Represents the distinct UI states of the Application Analyzer.
  *
  * Designed to be driven by a ViewModel or state coordinator without coupling to PackageManager.
  */
 sealed interface UninstallerUiState {
     /**
-     * Initial landing screen with title, description, and "🎲 Find a Random App" action.
+     * Initial landing screen with diagnostic title, description, and "Initiate Deep Scan" action.
      */
     data object Home : UninstallerUiState
 
     /**
-     * Displaying the randomly selected application with options to "Uninstall" or "Keep It".
+     * Theatrical multi-step analysis sequence screen ("Scanning installed applications...", etc.).
+     *
+     * @property app The candidate [AppInfo] selected for presentation upon analysis completion.
+     */
+    data class Analyzing(val app: AppInfo) : UninstallerUiState
+
+    /**
+     * Displaying the selected application candidate with options to "Proceed to Decommission" or "Keep It".
      */
     data class RandomApp(val app: AppInfo) : UninstallerUiState
 
     /**
-     * Displaying the confirmation dialog: "Are you sure? You are about to uninstall [App Name]".
+     * Displaying the confirmation dialog: "Security Verification: Are you sure? 🤔".
      */
     data class Confirming(val app: AppInfo) : UninstallerUiState
 
     /**
-     * Displaying the 5-second animated countdown screen before uninstall.
+     * Displaying the theatrical preparation and countdown screen before exposing final uninstall action.
      *
      * @property app The target app to be uninstalled.
-     * @property secondsRemaining The current remaining seconds (e.g. 5 down to 1).
+     * @property secondsRemaining The current remaining seconds (default 3 down to 1).
      */
     data class Countdown(
         val app: AppInfo,
-        val secondsRemaining: Int = 5
+        val secondsRemaining: Int = 3
     ) : UninstallerUiState
 
     /**

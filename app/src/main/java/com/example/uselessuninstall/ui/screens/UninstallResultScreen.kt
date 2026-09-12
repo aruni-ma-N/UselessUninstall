@@ -42,7 +42,7 @@ import com.example.uselessuninstall.ui.theme.UselessUninstallTheme
  *
  * @param app The [AppInfo] of the targeted application.
  * @param isSuccess True if the uninstallation succeeded; false if cancelled or failed.
- * @param onFindAnother Triggered when the user taps "Find Another App".
+ * @param onFindAnother Triggered when the user taps "Run New Analysis".
  * @param onBackHome Triggered when the user chooses to navigate back to the home screen.
  * @param onTryAgain Triggered when uninstallation failed/cancelled and user wishes to retry.
  * @param message Optional custom description or reason string.
@@ -89,8 +89,10 @@ fun UninstallResultScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "🎉",
-                            fontSize = 48.sp
+                            text = "✓",
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 } else {
@@ -116,7 +118,7 @@ fun UninstallResultScreen(
 
                 // Title
                 Text(
-                    text = if (isSuccess) "App Uninstalled" else "Uninstall Cancelled",
+                    text = if (isSuccess) "Decommissioning Requested" else "Operation Aborted",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -147,9 +149,9 @@ fun UninstallResultScreen(
                 // Description
                 Text(
                     text = message ?: if (isSuccess) {
-                        "Congratulations! ${app.name} has been successfully cleared from your device."
+                        "System uninstallation prompt dispatched for ${app.name}. Device records updated."
                     } else {
-                        "The uninstallation of ${app.name} was not completed or was cancelled."
+                        "The decommissioning protocol for ${app.name} was aborted. System integrity maintained."
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -178,7 +180,7 @@ fun UninstallResultScreen(
                         )
                     ) {
                         Text(
-                            text = "🎲 Find Another App",
+                            text = "Run New System Analysis",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -192,7 +194,7 @@ fun UninstallResultScreen(
                         shape = RoundedCornerShape(18.dp)
                     ) {
                         Text(
-                            text = "Back to Home",
+                            text = "Back to Diagnostic Terminal",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -210,7 +212,7 @@ fun UninstallResultScreen(
                         )
                     ) {
                         Text(
-                            text = "Try Again",
+                            text = "Restart Evaluation",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -224,7 +226,7 @@ fun UninstallResultScreen(
                         shape = RoundedCornerShape(18.dp)
                     ) {
                         Text(
-                            text = "Back to Home",
+                            text = "Back to Diagnostic Terminal",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
