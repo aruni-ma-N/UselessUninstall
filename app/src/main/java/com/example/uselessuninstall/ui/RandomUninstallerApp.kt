@@ -1,13 +1,34 @@
 package com.example.uselessuninstall.ui
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.uselessuninstall.model.AppInfo
 import com.example.uselessuninstall.model.SampleApps
 import com.example.uselessuninstall.ui.screens.AnalysisScreen
@@ -19,84 +40,38 @@ import com.example.uselessuninstall.ui.state.UninstallerUiState
 import com.example.uselessuninstall.ui.theme.UselessUninstallTheme
 
 /**
- * Top-level application coordinator for the Automated Application Analyzer.
+ * Top-level application coordinator connected to [RandomUninstallerViewModel].
  *
- * Simulates a serious diagnostic system while secretly driving random decommissioning.
+ * Coordinates real device package management, purely random candidate selection,
+ * and standard Android uninstallation intents with the serious diagnostic UI.
  *
+ * @param viewModel The [RandomUninstallerViewModel] driving application state and logic.
  * @param modifier Modifier applied to the root container.
- * @param onSelectRandomApp Optional hook to supply a real [AppInfo] (will later connect to RandomAppSelector).
- * @param onCountdownFinishedCallback Optional hook called upon final action authorization (will later connect to UninstallManager).
  */
 @Composable
 fun RandomUninstallerApp(
-    modifier: Modifier = Modifier,
-    onSelectRandomApp: (() -> AppInfo?)? = null,
-    onCountdownFinishedCallback: ((AppInfo) -> Unit)? = null
+    viewModel: RandomUninstallerViewModel,
+    modifier: Modifier = Modifier
 ) {
-    var uiState by remember {
-        mutableStateOf<UninstallerUiState>(UninstallerUiState.Home)
-    }
-
-    // =========================================================================
-    // PLACEHOLDER: App candidate selection
-    // Currently resolves via onSelectRandomApp hook or falls back to SampleApps mock pool.
-    // In future integration, this will be wired to real AppInfo from InstalledAppRetriever
-    // chosen by RandomAppSelector.
-    // =========================================================================
-    val pickCandidateApp: () -> AppInfo = {
-        onSelectRandomApp?.invoke() ?: SampleApps.sampleList.random()
-    }
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     RandomUninstallerContent(
         uiState = uiState,
         modifier = modifier,
-        onInitiateAnalysis = {
-            // Initiate the serious diagnostic analysis sequence
-            val candidate = pickCandidateApp()
-            uiState = UninstallerUiState.Analyzing(candidate)
-        },
-        onAnalysisComplete = { candidate ->
-            // Transition to Candidate Selected screen once diagnostic sequence completes
-            uiState = UninstallerUiState.RandomApp(candidate)
-        },
-        onCancelAnalysis = {
-            uiState = UninstallerUiState.Home
-        },
-        onUninstallClick = { app ->
-            uiState = UninstallerUiState.Confirming(app)
-        },
-        onKeepClick = {
-            uiState = UninstallerUiState.Home
-        },
-        onConfirmUninstall = { app ->
-            // Proceed to theatrical preparation and countdown
-            uiState = UninstallerUiState.Countdown(app = app, secondsRemaining = 3)
-        },
-        onDismissConfirmation = { app ->
-            uiState = UninstallerUiState.RandomApp(app)
-        },
-        onExecuteFinalUninstall = { app ->
-            // =====================================================================
-            // PLACEHOLDER: Final Uninstall Action
-            // Invoked when user confirms the final action button after the countdown.
-            // In future integration, this will call UninstallManager.requestUninstall().
-            // =====================================================================
-            onCountdownFinishedCallback?.invoke(app)
-            uiState = UninstallerUiState.Result(app = app, isSuccess = true)
-        },
-        onCancelCountdown = { app ->
-            uiState = UninstallerUiState.RandomApp(app)
-        },
-        onFindAnother = {
-            val candidate = pickCandidateApp()
-            uiState = UninstallerUiState.Analyzing(candidate)
-        },
-        onBackHome = {
-            uiState = UninstallerUiState.Home
-        },
-        onTryAgain = { app ->
-            uiState = UninstallerUiState.RandomApp(app)
-        }
+        onInitiateAnalysis = { viewModel.startAnalysis() },
+        onAnalysisComplete = { viewModel.onAnalysisSequenceCompleted() },
+        onCancelAnalysis = { viewModel.cancelToHome() },
+        onUninstallClick = { viewModel.requestConfirmation() },
+        onKeepClick = { viewModel.cancelToHome() },
+        onConfirmUninstall = { viewModel.startCountdown() },
+        onDismissConfirmation = { viewModel.dismissConfirmation() },
+        onExecuteFinalUninstall = { viewModel.executeUninstall(context) },
+        onCancelCountdown = { viewModel.cancelCountdown() },
+        onFindAnother = { viewModel.startAnalysis() },
+        onBackHome = { viewModel.cancelToHome() },
+        onTryAgain = { viewModel.startAnalysis() },
+        onRetryScan = { viewModel.loadInstalledApps() }
     )
 }
 
@@ -108,7 +83,7 @@ fun RandomUninstallerContent(
     uiState: UninstallerUiState,
     modifier: Modifier = Modifier,
     onInitiateAnalysis: () -> Unit,
-    onAnalysisComplete: (AppInfo) -> Unit,
+    onAnalysisComplete: () -> Unit,
     onCancelAnalysis: () -> Unit,
     onUninstallClick: (AppInfo) -> Unit,
     onKeepClick: (AppInfo) -> Unit,
@@ -118,7 +93,8 @@ fun RandomUninstallerContent(
     onCancelCountdown: (AppInfo) -> Unit,
     onFindAnother: () -> Unit,
     onBackHome: () -> Unit,
-    onTryAgain: (AppInfo) -> Unit
+    onTryAgain: (AppInfo) -> Unit,
+    onRetryScan: () -> Unit = {}
 ) {
     Crossfade(
         targetState = uiState,
@@ -126,6 +102,18 @@ fun RandomUninstallerContent(
         modifier = modifier
     ) { state ->
         when (state) {
+            is UninstallerUiState.Loading -> {
+                LoadingPackagesScreen()
+            }
+
+            is UninstallerUiState.Error -> {
+                ErrorDiagnosticScreen(
+                    message = state.message,
+                    canRetry = state.canRetry,
+                    onRetry = onRetryScan
+                )
+            }
+
             is UninstallerUiState.Home -> {
                 HomeScreen(
                     onFindRandomApp = onInitiateAnalysis
@@ -134,7 +122,7 @@ fun RandomUninstallerContent(
 
             is UninstallerUiState.Analyzing -> {
                 AnalysisScreen(
-                    onAnalysisComplete = { onAnalysisComplete(state.app) },
+                    onAnalysisComplete = onAnalysisComplete,
                     onCancel = onCancelAnalysis
                 )
             }
@@ -182,10 +170,155 @@ fun RandomUninstallerContent(
     }
 }
 
+/**
+ * Loading state rendered when reading installed applications from the device.
+ */
+@Composable
+fun LoadingPackagesScreen(
+    modifier: Modifier = Modifier
+) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(56.dp),
+                strokeWidth = 5.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Text(
+                text = "INITIALIZING PACKAGE SCAN",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.2.sp
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Scanning device package registry for eligible application candidates...",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Graceful error state rendered when scan or selection fails or no eligible apps exist.
+ */
+@Composable
+fun ErrorDiagnosticScreen(
+    message: String,
+    canRetry: Boolean,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 28.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "⚠️", fontSize = 48.sp)
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = "Diagnostic Scan Alert",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(18.dp)
+                    )
+                }
+            }
+
+            if (canRetry) {
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(
+                        text = "Retry Diagnostic Scan",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.height(56.dp))
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
-fun RandomUninstallerAppPreview() {
+fun RandomUninstallerContentPreview() {
     UselessUninstallTheme {
-        RandomUninstallerApp()
+        RandomUninstallerContent(
+            uiState = UninstallerUiState.RandomApp(SampleApps.instagram),
+            onInitiateAnalysis = {},
+            onAnalysisComplete = {},
+            onCancelAnalysis = {},
+            onUninstallClick = {},
+            onKeepClick = {},
+            onConfirmUninstall = {},
+            onDismissConfirmation = {},
+            onExecuteFinalUninstall = {},
+            onCancelCountdown = {},
+            onFindAnother = {},
+            onBackHome = {},
+            onTryAgain = {}
+        )
     }
 }

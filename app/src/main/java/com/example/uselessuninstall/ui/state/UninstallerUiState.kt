@@ -5,23 +5,39 @@ import com.example.uselessuninstall.model.AppInfo
 /**
  * Represents the distinct UI states of the Application Analyzer.
  *
- * Designed to be driven by a ViewModel or state coordinator without coupling to PackageManager.
+ * Driven by [RandomUninstallerViewModel] without coupling Compose directly to PackageManager.
  */
 sealed interface UninstallerUiState {
     /**
-     * Initial landing screen with diagnostic title, description, and "Initiate Deep Scan" action.
+     * Scanning the device's package registry to retrieve eligible user applications.
+     */
+    data object Loading : UninstallerUiState
+
+    /**
+     * Initial landing screen with diagnostic title, description, and "Initiate System Analysis" action.
      */
     data object Home : UninstallerUiState
 
     /**
+     * Failure state representing retrieval errors, empty package lists, or selection issues.
+     *
+     * @property message Descriptive failure explanation.
+     * @property canRetry Whether the user can trigger a re-scan.
+     */
+    data class Error(
+        val message: String,
+        val canRetry: Boolean = true
+    ) : UninstallerUiState
+
+    /**
      * Theatrical multi-step analysis sequence screen ("Scanning installed applications...", etc.).
      *
-     * @property app The candidate [AppInfo] selected for presentation upon analysis completion.
+     * @property app The real candidate [AppInfo] chosen by [RandomAppSelector].
      */
     data class Analyzing(val app: AppInfo) : UninstallerUiState
 
     /**
-     * Displaying the selected application candidate with options to "Proceed to Decommission" or "Keep It".
+     * Displaying the identified candidate application with options to "Proceed to Decommission" or "Disregard & Keep".
      */
     data class RandomApp(val app: AppInfo) : UninstallerUiState
 
@@ -31,7 +47,7 @@ sealed interface UninstallerUiState {
     data class Confirming(val app: AppInfo) : UninstallerUiState
 
     /**
-     * Displaying the theatrical preparation and countdown screen before exposing final uninstall action.
+     * Displaying the theatrical preparation and countdown screen before exposing the final action.
      *
      * @property app The target app to be uninstalled.
      * @property secondsRemaining The current remaining seconds (default 3 down to 1).
