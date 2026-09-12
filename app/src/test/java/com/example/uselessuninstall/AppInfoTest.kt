@@ -13,9 +13,11 @@ class AppInfoTest {
 
     @Test
     fun testAppInfoCreation() {
-        val app = AppInfo(name = "Instagram", packageName = "com.instagram.android")
+        val app = AppInfo(appName = "Instagram", packageName = "com.instagram.android")
+        assertEquals("Instagram", app.appName)
         assertEquals("Instagram", app.name)
         assertEquals("com.instagram.android", app.packageName)
+        assertEquals(null, app.appIcon)
     }
 
     @Test

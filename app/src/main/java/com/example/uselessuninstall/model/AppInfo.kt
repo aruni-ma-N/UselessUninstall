@@ -3,52 +3,60 @@ package com.example.uselessuninstall.model
 import android.graphics.drawable.Drawable
 
 /**
- * UI representation of an installed application.
+ * Modular data class representing an application installed on the device.
  *
- * This data class is decoupled from Android's [android.content.pm.PackageManager].
- * The backend developer will construct instances of this model and supply them to the UI.
- *
- * @property name User-facing display name of the application (e.g., "Instagram").
- * @property packageName Unique package identifier (e.g., "com.instagram.android").
- * @property iconDrawable Optional [Drawable] representing the app's icon.
+ * @property appName The user-facing label or title of the application (e.g., "Instagram").
+ * @property packageName The unique package identifier of the application (e.g., "com.instagram.android").
+ * @property appIcon The application's icon graphic represented as an Android [Drawable].
  */
 data class AppInfo(
-    val name: String,
+    val appName: String,
     val packageName: String,
-    val iconDrawable: Drawable? = null
-)
+    val appIcon: Drawable? = null
+) {
+
+    /**
+     * Backward-compatibility property mapping [appName] for existing UI references.
+     */
+    val name: String get() = appName
+
+    /**
+     * Backward-compatibility property mapping [appIcon] for existing UI references.
+     */
+    val iconDrawable: Drawable? get() = appIcon
+}
 
 /**
  * Mock applications used for Compose Previews, UI testing, and standalone interactive flow.
  */
 object SampleApps {
     val instagram = AppInfo(
-        name = "Instagram",
+        appName = "Instagram",
         packageName = "com.instagram.android"
     )
 
     val spotify = AppInfo(
-        name = "Spotify",
+        appName = "Spotify",
         packageName = "com.spotify.music"
     )
 
     val candyCrush = AppInfo(
-        name = "Candy Crush Saga",
+        appName = "Candy Crush Saga",
         packageName = "com.king.candycrushsaga"
     )
 
     val duolingo = AppInfo(
-        name = "Duolingo",
+        appName = "Duolingo",
         packageName = "com.duolingo"
     )
 
     val twitter = AppInfo(
-        name = "X",
+        appName = "X",
         packageName = "com.twitter.android"
     )
 
     val reddit = AppInfo(
-        name = "Reddit",
+        appName = "Reddit",
         packageName = "com.reddit.frontpage"
     )
 
