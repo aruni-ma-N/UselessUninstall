@@ -98,6 +98,21 @@ class RandomUninstallerViewModelTest {
     }
 
     @Test
+    fun testStartAnalysisWithEmptyAppListShowsError() {
+        val retriever = FakeRetriever(appsToReturn = emptyList())
+        val viewModel = RandomUninstallerViewModel(
+            appRetriever = retriever,
+            ioDispatcher = Dispatchers.Unconfined,
+            customScope = createTestScope()
+        )
+
+        viewModel.startAnalysis()
+
+        val state = viewModel.uiState.value
+        assertTrue("UI state should remain Error when attempting analysis with empty pool", state is UninstallerUiState.Error)
+    }
+
+    @Test
     fun testRetrievalExceptionTransitionsToErrorGracefully() {
         val retriever = FakeRetriever(throwException = true)
         val viewModel = RandomUninstallerViewModel(
@@ -227,8 +242,46 @@ class RandomUninstallerViewModelTest {
     }
 
     @Test
-    fun testFailedUninstallHandledGracefully() {
+    fun testExecuteUninstallWithNoSelectedAppInfoTransitionsToError() {
         val retriever = FakeRetriever(appsToReturn = candidatePool)
+        val viewModel = RandomUninstallerViewModel(
+            appRetriever = retriever,
+            ioDispatcher = Dispatchers.Unconfined,
+            customScope = createTestScope()
+        )
+
+        val dummyContext = createDummyContext()
+        viewModel.executeUninstall(dummyContext)
+
+        val state = viewModel.uiState.value
+        assertTrue("Must transition to Error when no AppInfo is selected", state is UninstallerUiState.Error)
+        assertTrue((state as UninstallerUiState.Error).message.contains("No application candidate selected"))
+    }
+
+    @Test
+    fun testExecuteUninstallWithInvalidPackageNameTransitionsToError() {
+        val invalidApp = AppInfo("Blank App", "   ")
+        val retriever = FakeRetriever(appsToReturn = listOf(invalidApp))
+        val viewModel = RandomUninstallerViewModel(
+            appRetriever = retriever,
+            appSelector = FakeSelector(appToSelect = invalidApp),
+            ioDispatcher = Dispatchers.Unconfined,
+            customScope = createTestScope()
+        )
+
+        viewModel.startAnalysis()
+        val dummyContext = createDummyContext()
+        viewModel.executeUninstall(dummyContext)
+
+        val state = viewModel.uiState.value
+        assertTrue("Must transition to Error when package name is blank", state is UninstallerUiState.Error)
+        assertTrue((state as UninstallerUiState.Error).message.contains("Invalid package name"))
+    }
+
+    @Test
+    fun testNoActivityAvailableToLaunchIntentHandledGracefully() {
+        val retriever = FakeRetriever(appsToReturn = candidatePool)
+        // Simulate no Activity available to handle Intent -> requestUninstall returns false
         val uninstallManager = FakeUninstallManager().apply { shouldSucceed = false }
         val viewModel = RandomUninstallerViewModel(
             appRetriever = retriever,
@@ -242,12 +295,12 @@ class RandomUninstallerViewModelTest {
         viewModel.onAnalysisSequenceCompleted()
 
         val dummyContext = createDummyContext()
-
         viewModel.executeUninstall(dummyContext)
 
         val state = viewModel.uiState.value
         assertTrue(state is UninstallerUiState.Result)
-        assertFalse("Result should reflect failure", (state as UninstallerUiState.Result).isSuccess)
+        assertFalse("Result must reflect failure when no activity can handle Intent", (state as UninstallerUiState.Result).isSuccess)
+        assertTrue((state as UninstallerUiState.Result).message?.contains("No activity available") == true)
     }
 
     @Test
@@ -266,5 +319,52 @@ class RandomUninstallerViewModelTest {
         viewModel.cancelToHome()
         assertNull(viewModel.selectedApp.value)
         assertTrue(viewModel.uiState.value is UninstallerUiState.Home)
+    }
+
+    @Test
+    fun testExecuteUninstallWithExplicitAppInfoDispatchesTargetApp() {
+        val retriever = FakeRetriever(appsToReturn = candidatePool)
+        val fakeUninstallManager = FakeUninstallManager().apply { shouldSucceed = true }
+        val viewModel = RandomUninstallerViewModel(
+            appRetriever = retriever,
+            appSelector = FakeSelector(appToSelect = realApp1),
+            uninstallManager = fakeUninstallManager,
+            ioDispatcher = Dispatchers.Unconfined,
+            customScope = createTestScope()
+        )
+
+        viewModel.startAnalysis()
+        viewModel.onAnalysisSequenceCompleted()
+
+        val explicitApp = AppInfo("Explicit Target App", "com.explicit.target")
+        val dummyContext = createDummyContext()
+        viewModel.executeUninstall(dummyContext, explicitApp)
+
+        val state = viewModel.uiState.value
+        assertTrue("UI state must be Result", state is UninstallerUiState.Result)
+        val resultState = state as UninstallerUiState.Result
+        assertTrue("Uninstall must succeed", resultState.isSuccess)
+        assertEquals("Target app must match explicit AppInfo", explicitApp, resultState.app)
+        assertEquals("com.explicit.target", fakeUninstallManager.requestedPackage)
+    }
+
+    @Test
+    fun testExecuteUninstallWithExplicitAppInfoWithBlankPackageNameFailsGracefully() {
+        val retriever = FakeRetriever(appsToReturn = candidatePool)
+        val viewModel = RandomUninstallerViewModel(
+            appRetriever = retriever,
+            appSelector = FakeSelector(appToSelect = realApp1),
+            ioDispatcher = Dispatchers.Unconfined,
+            customScope = createTestScope()
+        )
+
+        viewModel.startAnalysis()
+        val blankApp = AppInfo("Blank App", "")
+        val dummyContext = createDummyContext()
+        viewModel.executeUninstall(dummyContext, blankApp)
+
+        val state = viewModel.uiState.value
+        assertTrue("Must transition to Error when explicit package name is blank", state is UninstallerUiState.Error)
+        assertTrue((state as UninstallerUiState.Error).message.contains("Invalid package name"))
     }
 }

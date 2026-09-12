@@ -157,7 +157,7 @@ class RandomUninstallerViewModel(
 
     /**
      * User confirmed intent; transitions to theatrical preparation and countdown.
-     * NOTE: Does NOT uninstall anything.
+     * NOTE: Does NOT launch the uninstall Intent.
      */
     fun startCountdown() {
         val app = _selectedApp.value ?: return
@@ -183,19 +183,41 @@ class RandomUninstallerViewModel(
     /**
      * Dispatches the uninstallation request via [UninstallManager] ONLY upon explicit user confirmation.
      *
+     * Handles:
+     * - No selected AppInfo
+     * - Invalid package name
+     * - No Activity available to launch the Intent
+     *
      * @param context Android [Context] (Activity) used to trigger the system uninstallation Intent.
+     * @param app Optional explicit [AppInfo] candidate to uninstall. Falls back to [_selectedApp.value].
      */
-    fun executeUninstall(context: Context) {
-        val app = _selectedApp.value ?: return
-        val dispatched = uninstallManager.requestUninstall(context, app)
+    fun executeUninstall(context: Context, app: AppInfo? = null) {
+        val targetApp = app ?: _selectedApp.value
+        if (targetApp == null) {
+            _uiState.value = UninstallerUiState.Error(
+                message = "No application candidate selected for uninstallation.",
+                canRetry = true
+            )
+            return
+        }
+
+        if (targetApp.packageName.isBlank()) {
+            _uiState.value = UninstallerUiState.Error(
+                message = "Invalid package name for application: ${targetApp.appName}.",
+                canRetry = true
+            )
+            return
+        }
+
+        val dispatched = uninstallManager.requestUninstall(context, targetApp)
 
         _uiState.value = UninstallerUiState.Result(
-            app = app,
+            app = targetApp,
             isSuccess = dispatched,
             message = if (dispatched) {
-                "System uninstallation prompt dispatched for ${app.appName}."
+                "System uninstallation prompt dispatched for ${targetApp.appName}."
             } else {
-                "Unable to launch system uninstallation for ${app.appName}."
+                "Unable to launch system uninstallation for ${targetApp.appName}. No activity available to handle the uninstall Intent."
             }
         )
     }

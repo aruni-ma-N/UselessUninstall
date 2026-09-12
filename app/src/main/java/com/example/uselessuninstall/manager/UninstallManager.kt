@@ -91,6 +91,20 @@ interface UninstallManager {
 }
 
 /**
+ * Helper extension to unwrap an [Activity] from an arbitrary [Context], traversing any [android.content.ContextWrapper]s.
+ */
+fun Context.findActivity(): Activity? {
+    var current: Context? = this
+    while (current is android.content.ContextWrapper) {
+        if (current is Activity) {
+            return current
+        }
+        current = current.baseContext
+    }
+    return null
+}
+
+/**
  * Standard implementation of [UninstallManager] delegating to the Android OS.
  */
 class AndroidUninstallManager : UninstallManager {
@@ -106,33 +120,30 @@ class AndroidUninstallManager : UninstallManager {
 
     override fun requestUninstall(context: Context, packageName: String): Boolean {
         if (!UninstallManager.isValidPackageName(packageName)) {
-            Log.w(UninstallManager.TAG, "Cannot request uninstall: package name is blank or invalid")
+            Log.w(UninstallManager.TAG, "Cannot request uninstall: package name '$packageName' is blank or invalid")
             return false
         }
+
+        val activity = context.findActivity()
+        val launchContext = activity ?: context
+
+        Log.i(
+            UninstallManager.TAG,
+            "Requesting uninstall for package='$packageName' using context=${context.javaClass.name}, resolvedActivity=${activity?.javaClass?.name}"
+        )
 
         return try {
             val intent = createUninstallIntent(packageName)
 
-            if (context !is Activity) {
+            if (activity == null) {
+                // If launching strictly outside an Activity (e.g. ApplicationContext), FLAG_ACTIVITY_NEW_TASK is mandatory.
+                // When launching from an Activity, do NOT add FLAG_ACTIVITY_NEW_TASK as it disrupts the Activity task stack.
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
 
-            // Verify if there is an activity available to handle this intent
-            val packageManager = context.packageManager
-            val resolvedActivity = intent.resolveActivity(packageManager)
-
-            if (resolvedActivity != null) {
-                context.startActivity(intent)
-                true
-            } else {
-                // Fallback attempt in case package visibility filters mask the system installer
-                Log.w(
-                    UninstallManager.TAG,
-                    "resolveActivity returned null for $packageName; attempting startActivity directly"
-                )
-                context.startActivity(intent)
-                true
-            }
+            launchContext.startActivity(intent)
+            Log.i(UninstallManager.TAG, "Successfully launched uninstall confirmation intent for package: $packageName")
+            true
         } catch (e: ActivityNotFoundException) {
             Log.e(UninstallManager.TAG, "No Activity found to handle uninstallation of $packageName", e)
             false
